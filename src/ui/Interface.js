@@ -39,7 +39,9 @@ export class Interface {
     const url = import.meta.env.VITE_FLOWTRACK_URL
     if (url) $$('[data-download]').forEach((a) => (a.href = url))
 
-    document.documentElement.style.setProperty('--wordmark', `url(${import.meta.env.BASE_URL}brand/computarial-black.svg)`)
+    // Absolute: a relative url() inside a custom property resolves against the stylesheet, not the page
+    const mark = new URL(`${import.meta.env.BASE_URL}brand/computarial-black.svg`, location.href)
+    document.documentElement.style.setProperty('--wordmark', `url("${mark.href}")`)
     this.#chapters()
     this.#manifesto()
     this.#card()

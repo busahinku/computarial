@@ -172,7 +172,7 @@ Hashed assets never need invalidation. Invalidate `/*` only if you changed files
 
 ### Social preview and canonical URL
 
-`index.html` points `canonical`, `og:url` and `og:image` at `https://busahinku.github.io/computarial/`. Change them when you move to your own domain.
+`index.html` points `canonical`, `og:url` and `og:image` at `https://busahin.com/computarial/`. GitHub Pages serves the project there because the account site uses the busahin.com custom domain; `busahinku.github.io/computarial/` redirects to it.
 
 ## Deploy to GitHub Pages (free)
 

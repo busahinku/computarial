@@ -55,7 +55,9 @@ There is exactly one `requestAnimationFrame` on the page: GSAP's ticker. Each fr
 3. The master timeline, scrubbed to scroll progress, writes plain numbers into `state` (`camT`, `formation`, `chaos`, `flow`, `fold`, `halo`...).
 4. `App.tick()` reads `state`, moves the camera along a Catmull-Rom spline, morphs feather formations, and renders.
 
-Timeline positions come from real section offsets, so a chapter transition plays exactly while its section scrolls into view. The WebGL side never touches the DOM, and the DOM never touches Three.js; `state` is the only contract between them.
+Timeline positions come from real section offsets, so a chapter transition plays exactly while its section scrolls into view. The opening transition is the exception: it starts with the very first scroll (eased out), and the hero copy starts to lift at the same moment, so the top of the page never feels stuck. Scrolling is live as soon as the preloader lifts; the intro flight blends into wherever the reader goes. The WebGL side never touches the DOM, and the DOM never touches Three.js; `state` is the only contract between them.
+
+Deep links work: `computarial.com/#mission` boots at the top for the intro, then travels to the chapter.
 
 ### Loading and pre-warming
 
@@ -68,14 +70,15 @@ After each stage, `prewarm()` makes every object visible and unculled, runs `ren
 
 ### Performance
 
-- Resolution follows a pixel budget (4.2 M pixels on desktop, 1.4 M on touch devices) instead of `devicePixelRatio` alone, so a phone, a 1080p monitor and a 4K or 5K display cost the GPU about the same. DOM text always stays at native resolution.
+- Resolution follows a pixel budget (4.2 M pixels on desktop at up to 1.5x, 2.4 M on touch devices at up to 2x) instead of `devicePixelRatio` alone, so a phone, a 1080p monitor and a 4K or 5K display cost the GPU about the same. A 390 px wide phone renders at 2x; tablets settle near 1.3x. DOM text always stays at native resolution.
 - Above 1920 px wide the whole UI scales with the viewport (`html { font-size: calc(100vw / 120) }`), so 4K shows the same composition, sharper.
-- MSAA only below 1.25x; depth of field runs at 0.38 of the resolution.
-- A quality governor compares frame intervals with the display's own refresh (60 or 120 Hz) and steps down in order: resolution, then depth of field, then a steady 60 fps cap.
+- Anti-aliasing: MSAA only below 1.25x, FXAA everywhere else (phones included). FXAA needs no extra buffers, so it costs a phone no GPU memory, and it runs before depth of field and grading, so the gold rings are smooth while the film grain stays crisp. Depth of field runs at 0.38 of the resolution.
+- A quality governor compares frame intervals with the display's own refresh (60 or 120 Hz) over 90-frame windows, ignoring the slowest 8% (a texture upload or GC pause is not a trend). Sharpness goes last; it steps down in order: a steady 60 fps on 120 Hz screens, depth of field, MSAA, resolution (never below one pixel per CSS pixel), then FXAA. After sustained headroom the resolution climbs back, but never past a level that already failed.
 - Resize is coalesced, and the canvas is sized to the large viewport (`100lvh`), so mobile URL bars never trigger a GPU re-allocation. Rotating a phone rebuilds the scroll map.
+- The page, the canvas and the mobile legibility veil share one pearl "mist" tone (`--mist`). The veil is a single fixed layer sized to the large viewport, not a scrim per chapter, so no edge ever scrolls through the frame, and the strip a collapsing mobile toolbar uncovers matches the scene instead of flashing white.
 - Story assets build only after the intro flight, when the main thread is idle, so the opening never drops a frame.
 - Feathers are two instanced meshes, depth-sorted in place each frame (about 100 instances, no allocations) for clean alpha blending.
-- Backdrop blur is limited to four large surfaces; small chips use a solid pearl fill.
+- Backdrop blur is limited to four large surfaces (plus the menu overlay while it is open); small chips, and the Flowtrack card on tablets and phones, use a solid pearl fill.
 - A lost WebGL context (driver reset) falls back to the painted sky and resumes when the context returns.
 
 Measured on an M4 Pro, every chapter holds 60 fps (p95 16.7 ms) with full effects at 1920x1080, 2560x1440 @2x (5K) and 3840x2160 (4K), with headroom for 120 Hz. Verified in Chromium and WebKit (Safari 26), on phone (portrait, landscape and rotation), tablet and desktop, and with reduced motion.
@@ -88,6 +91,7 @@ public/
   brand/computarial-white.svg
   favicon.svg                   the "C" of the wordmark, adapts to dark UI
   images/og.webp                social preview, 1200x630
+  images/og.jpg                 the same preview as JPEG, for platforms that do not read WebP (og:image points here)
   models/eink-fold.glb          foldable e-ink device, EXT_meshopt_compression + quantized
   textures/marble.ktx2          ETC1S, tileable, with mipmaps
   textures/cloud.ktx2           UASTC + Zstd, with alpha
@@ -172,7 +176,7 @@ Hashed assets never need invalidation. Invalidate `/*` only if you changed files
 
 ### Social preview and canonical URL
 
-`index.html` points `canonical`, `og:url` and `og:image` at `https://computarial.com/`. The apex domain is the canonical address; `www.computarial.com` redirects to it through GitHub Pages.
+`index.html` points `canonical`, `og:url`, `og:image` and `twitter:image` at `https://computarial.com/`. The apex domain is the canonical address; `www.computarial.com` redirects to it through GitHub Pages.
 
 ## Deploy to GitHub Pages (free)
 
@@ -188,6 +192,8 @@ Pages is free for public repositories. To deploy from GitHub Actions instead, th
 
 - All copy is real HTML in reading order; the canvas is `aria-hidden`.
 - Skip link, visible focus rings, labelled controls, `aria-live` form status.
+- The current chapter is marked with `aria-current="location"` in the nav, the chapter rail and the menu.
+- On phones and short landscape screens the nav links collapse into a menu of chapters: focus moves into it, the page behind is `inert` and does not scroll, and Escape, the toggle or a tap outside closes it. Its toggle carries the reading-progress ring the chapter rail shows on desktop.
 - `prefers-reduced-motion`: no smooth-scroll hijack, no intro flight, no parallax, slowed ambient motion.
 - `prefers-reduced-transparency`: glass surfaces become solid.
 - Without WebGL2, the page falls back to the full story over a painted sky.

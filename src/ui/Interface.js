@@ -50,6 +50,7 @@ export class Interface {
     const mark = new URL(`${import.meta.env.BASE_URL}brand/computarial-black.svg`, location.href)
     document.documentElement.style.setProperty('--wordmark', `url("${mark.href}")`)
     this.#chapters()
+    this.#menu()
     this.#manifesto()
     this.#card()
     this.#footer()
@@ -67,28 +68,85 @@ export class Interface {
       .fromTo('.chapters', { autoAlpha: 0, x: 12 }, { autoAlpha: 1, x: 0, duration: 1, ease: 'expo.out' }, 1.2)
   }
 
+  // Deep links (computarial.com/#mission): the page always boots at the top for the intro, then travels there
+  follow(hash) {
+    const target = hash.length > 1 && this.sections.find((s) => `#${s.id}` === hash)
+    if (target && target !== this.sections[0]) this.scroll.scrollTo(target)
+  }
+
   #chapters() {
     const last = this.sections.length - 1
     this.sections.forEach((section, i) => {
       section.reveal = reveal($$('[data-split]', section), $$('[data-fade]', section))
       if (i > 0) ScrollTrigger.create({ trigger: section, start: 'top 62%', once: true, onEnter: section.reveal })
       if (i < last) {
+        // The hero starts to lift with the very first scroll (gently, so a nudge does not hide it);
+        // the other chapters hold their copy, then hand over as the next one arrives.
+        const hero = i === 0
         gsap.to($('.stage__inner', section), {
           autoAlpha: 0,
           y: -70,
-          ease: 'none',
-          scrollTrigger: { trigger: section, start: 'bottom 92%', end: 'bottom 40%', scrub: true },
+          ease: hero ? 'power1.in' : 'none',
+          scrollTrigger: { trigger: section, start: hero ? 'top top' : 'bottom 92%', end: 'bottom 40%', scrub: true },
         })
       }
     })
 
-    const links = $$('.nav__link, .chapters__item')
+    // aria-current needs a value: an empty attribute reads as "false" to assistive technology
+    const links = $$('.nav__link, .chapters__item, .menu__link')
     bus.on('chapter', (i) => {
-      const id = this.sections[i].id
-      links.forEach((a) => a.toggleAttribute('aria-current', a.hash === `#${id}`))
+      const hash = `#${this.sections[i].id}`
+      links.forEach((a) => (a.hash === hash ? a.setAttribute('aria-current', 'location') : a.removeAttribute('aria-current')))
     })
-    const rail = $('.chapters')
-    bus.on('progress', (p) => rail.style.setProperty('--p', p.toFixed(4)))
+    const meters = $$('.chapters, [data-menu-toggle]')
+    bus.on('progress', (p) => meters.forEach((el) => el.style.setProperty('--p', p.toFixed(4))))
+  }
+
+  // Phones: the nav links collapse into a sheet of chapters. While it is open the page behind
+  // is inert and does not scroll; Escape, the toggle or a tap outside the panel closes it.
+  #menu() {
+    const toggle = $('[data-menu-toggle]')
+    const menu = $('[data-menu]')
+    const panel = $('.menu__panel', menu)
+    const items = $$('.menu__list li, .menu__foot', menu)
+    const behind = $$('main, .footer, .chapters')
+    let tl
+    this.menuOpen = false
+
+    const set = (open) => {
+      if (open === this.menuOpen) return
+      this.menuOpen = open
+      toggle.setAttribute('aria-expanded', String(open))
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu')
+      behind.forEach((el) => (el.inert = open))
+      tl?.kill()
+      if (open) {
+        this.scroll.stop()
+        menu.hidden = false
+        // Opacity, not autoAlpha: the links must stay focusable while they fade in
+        tl = gsap
+          .timeline()
+          .fromTo(menu, { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' })
+          .fromTo(panel, { y: -14, scale: 0.98 }, { y: 0, scale: 1, duration: 0.7, ease: 'expo.out' }, 0)
+          .fromTo(items, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.04, ease: 'expo.out' }, 0.08)
+        const first = $('.menu__link[aria-current]', menu) ?? $('.menu__link', menu)
+        first.focus({ preventScroll: true })
+      } else {
+        this.scroll.start()
+        tl = gsap.to(menu, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => (menu.hidden = true) })
+      }
+    }
+    this.closeMenu = () => set(false)
+
+    toggle.addEventListener('click', () => set(!this.menuOpen))
+    menu.addEventListener('click', (e) => !panel.contains(e.target) && set(false))
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !this.menuOpen) return
+      set(false)
+      toggle.focus()
+    })
+    // Rotating to a layout without the toggle closes the sheet
+    addEventListener('resize', () => this.menuOpen && !toggle.offsetWidth && set(false))
   }
 
   #manifesto() {
@@ -156,10 +214,10 @@ export class Interface {
       const target = a && a.hash.length > 1 && document.querySelector(a.hash)
       if (!target) return
       e.preventDefault()
+      this.closeMenu?.()
       if (a.dataset.interest) this.#chooseInterest(a.dataset.interest)
-      this.scroll.scrollTo(target)
       const focus = a.dataset.focus && document.querySelector(a.dataset.focus)
-      if (focus) setTimeout(() => focus.focus({ preventScroll: true }), env.reducedMotion ? 0 : 2300)
+      this.scroll.scrollTo(target, { onComplete: () => focus?.focus({ preventScroll: true }) })
     })
   }
 
@@ -193,9 +251,11 @@ export class Interface {
       }),
     )
 
+    // Hover ticks are for a mouse; on touch, pointerenter fires on every tap
     let last = 0
     $$('.btn, .nav__link, .link').forEach((el) =>
-      el.addEventListener('pointerenter', () => {
+      el.addEventListener('pointerenter', (e) => {
+        if (e.pointerType !== 'mouse') return
         const now = performance.now()
         if (now - last > 90) bus.emit('ui:hover')
         last = now

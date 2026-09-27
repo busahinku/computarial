@@ -54,9 +54,11 @@ async function boot() {
   sound.toggle(true)
   root.classList.remove('is-loading')
   preloader.leave()
+  // Scrolling is live the moment the preloader lifts: the intro flight blends into wherever the reader goes
+  scroll.start()
   ui.intro()
+  ui.follow(location.hash)
   gsap.to(state, { intro: 1, duration: env.reducedMotion ? 0.01 : 3.2, ease: 'power3.inOut', onComplete: introDone })
-  gsap.delayedCall(env.reducedMotion ? 0 : 1.2, () => scroll.start())
 }
 
 // Without WebGL2 the page is still the full story: DOM copy over a painted sky.
@@ -69,6 +71,7 @@ function fallback() {
   ui.init()
   scroll.start()
   ui.intro()
+  ui.follow(location.hash)
 }
 
 if (document.createElement('canvas').getContext('webgl2')) {

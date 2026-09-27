@@ -4,8 +4,8 @@ import {
 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import {
-  BloomEffect, BrightnessContrastEffect, DepthOfFieldEffect, EffectComposer, EffectPass, NoiseEffect, RenderPass,
-  ToneMappingEffect, ToneMappingMode, VignetteEffect, BlendFunction,
+  BloomEffect, BrightnessContrastEffect, DepthOfFieldEffect, EffectComposer, EffectPass, FXAAEffect, NoiseEffect,
+  RenderPass, ToneMappingEffect, ToneMappingMode, VignetteEffect, BlendFunction,
 } from 'postprocessing'
 import gsap from 'gsap'
 import { state, env, bus } from '../core/store.js'
@@ -28,6 +28,10 @@ const INTRO = { pos: new Vector3(-1.2, 15.5, 4.2), look: new Vector3(0, 2, -0.5)
 const SUN_HERO = new Vector3(-0.52, 0.55, -0.66).normalize()
 const SUN_HALO = new Vector3(0, 0.6, -0.8).normalize()
 
+// Quality governor: resolution steps and the lowest multiplier it may reach
+const STEP = 0.12
+const FLOOR = 0.64
+
 const v3 = (a) => (a.isVector3 ? a.clone() : new Vector3(...a))
 const _pos = new Vector3()
 const _look = new Vector3()
@@ -46,6 +50,11 @@ export class App {
     this.time = 0
     this.frames = []
     this.quality = 1 // governor multiplier on the resolution budget
+    this.ceiling = 1 // highest multiplier the governor may climb back to
+    this.headroom = 0 // consecutive windows with spare frame time
+    this.recovered = -Infinity
+    this.msaa = true
+    this.aa = true
     this.size = [0, 0]
   }
 
@@ -75,9 +84,14 @@ export class App {
     this.focusPath = new CatmullRomCurve3(KEYS.map((k) => v3(k.focus)), false, 'centripetal')
 
     // Post: DoF needs its own pass (convolution); bloom, grading and grain merge into one.
-    // MSAA only where pixels are coarse; at 1.5x the extra samples cost more than they show.
+    // Edges: MSAA only where pixels are coarse (at 1.5x the extra samples cost more than they
+    // show), FXAA everywhere else, phones included. FXAA needs no extra buffers, so it costs a
+    // phone no memory, and it runs before DoF and grading: highlights on the gold rings are
+    // smoothed while the film grain stays crisp.
     this.composer = new EffectComposer(this.renderer, { frameBufferType: HalfFloatType, multisampling: this.#samples() })
     this.composer.addPass(new RenderPass(this.scene, this.camera))
+    this.fxaa = new EffectPass(this.camera, new FXAAEffect())
+    this.composer.addPass(this.fxaa)
     if (high) {
       this.dof = new DepthOfFieldEffect(this.camera, { focusDistance: 7, focusRange: 3.6, bokehScale: 2.2, resolutionScale: 0.38 })
       this.dof.target = new Vector3().copy(BLOOM_CENTER)
@@ -86,7 +100,7 @@ export class App {
     }
     this.bloom = new BloomEffect({ intensity: 0.4, luminanceThreshold: 0.94, luminanceSmoothing: 0.25, mipmapBlur: true, radius: 0.7, levels: 6 })
     const noise = new NoiseEffect({ blendFunction: BlendFunction.SOFT_LIGHT, premultiply: false })
-    noise.blendMode.opacity.value = 0.07
+    noise.blendMode.opacity.value = high ? 0.07 : 0.05
     this.composer.addPass(
       new EffectPass(
         this.camera,
@@ -206,16 +220,19 @@ export class App {
 
   // Resolution follows a pixel budget, not just devicePixelRatio: a phone, a 1080p
   // monitor and a 4K or 5K display all cost the GPU about the same per frame.
+  // Phones render at up to 2x (a 390 px wide phone lands right there); tablets settle near 1.3x.
+  // The governor may trade resolution for frame rate, but never below one pixel per CSS pixel.
   #pixelRatio() {
     const [w, h] = [this.canvas.clientWidth || innerWidth, this.canvas.clientHeight || innerHeight]
-    const budget = this.high ? 4.2e6 : 1.4e6
-    const cap = this.high ? 1.5 : 1.25
-    return Math.max(0.5, Math.min(devicePixelRatio, cap, Math.sqrt(budget / (w * h))) * this.quality)
+    const budget = this.high ? 4.2e6 : 2.4e6
+    const cap = this.high ? 1.5 : 2
+    const ideal = Math.min(devicePixelRatio, cap, Math.sqrt(budget / (w * h)))
+    return Math.max(Math.min(ideal, 1), ideal * this.quality)
   }
 
   // Extra samples only where pixels are coarse; at 1.25x and above they cost more than they show
   #samples() {
-    return this.high && this.dpr < 1.25 ? 2 : 0
+    return this.msaa && this.high && this.dpr < 1.25 ? 2 : 0
   }
 
   resize(force = false) {
@@ -233,31 +250,61 @@ export class App {
     this.renderer.setSize(w, h, false)
     const samples = this.#samples()
     if (this.composer.multisampling !== samples) this.composer.multisampling = samples
+    this.fxaa.enabled = this.aa && samples === 0
     this.composer.setSize(w, h, false)
     if (this.atmosphere) this.atmosphere.uniforms.uPixel.value = this.dpr
   }
 
-  // Quality governor. Frame intervals are judged against the display's own refresh
-  // (60 or 120 Hz), so pacing stays even. Levers, in order: resolution, depth of
-  // field, then a steady 60 fps cap on high refresh screens.
+  // Quality governor. Frame intervals are judged against the display's own refresh (60 or
+  // 120 Hz) over 90-frame windows, with the slowest 8% dropped: one texture upload or GC
+  // pause is not a trend. Sharpness is the last thing to go, so the levers run cheapest loss
+  // first: a steady 60 fps on 120 Hz screens, depth of field, MSAA, resolution, then FXAA.
+  // After sustained headroom resolution climbs back, but never past a level that failed.
   govern(dt) {
     if (this.time < 2.5 || document.hidden) return
     const f = this.frames
     f.push(dt)
-    if (f.length < 60) return
+    if (f.length < 90) return
     f.sort((a, b) => a - b)
-    const refresh = f[3]
-    const avg = f.reduce((a, b) => a + b, 0) / f.length
+    const refresh = f[4]
+    const kept = f.length - Math.ceil(f.length * 0.08)
+    let sum = 0
+    for (let i = 0; i < kept; i++) sum += f[i]
+    const avg = sum / kept
     f.length = 0
-    if (avg < refresh * 1.18) return
-    if (this.quality > 0.62) {
-      this.quality = Math.max(0.62, this.quality - 0.13)
-      this.resize(true)
-    } else if (this.dofPass?.enabled) {
-      this.dofPass.enabled = false
-    } else if (refresh < 0.012 && !this.capped) {
+    if (avg > refresh * 1.2) {
+      this.headroom = 0
+      this.#degrade(refresh)
+    } else if (avg < refresh * 1.06 && ++this.headroom >= 4) {
+      this.headroom = 0
+      this.#recover()
+    }
+  }
+
+  #degrade(refresh) {
+    if (refresh < 0.012 && !this.capped) {
       this.capped = true
       gsap.ticker.fps(60)
+    } else if (this.dofPass?.enabled) {
+      this.dofPass.enabled = false
+    } else if (this.#samples()) {
+      this.msaa = false
+      this.resize(true)
+    } else if (this.quality > FLOOR) {
+      // A level that fails right after a recovery becomes the new ceiling
+      if (this.time - this.recovered < 5) this.ceiling = this.quality - STEP
+      this.quality = Math.max(FLOOR, this.quality - STEP)
+      this.resize(true)
+    } else if (this.aa) {
+      this.aa = false
+      this.resize(true)
     }
+  }
+
+  #recover() {
+    if (this.quality >= this.ceiling) return
+    this.quality = Math.min(this.ceiling, this.quality + STEP)
+    this.recovered = this.time
+    this.resize(true)
   }
 }

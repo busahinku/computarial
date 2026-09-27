@@ -1458,6 +1458,13 @@ main {
   .stage__inner {
     padding-right: calc(var(--gutter) + 5.5rem);
   }
+
+  /* Centered chapters need equal rail clearance on both sides. Without this,
+     the shared right-hand allowance shifts their visual axis off the viewport. */
+  .stage--why .stage__inner,
+  .stage--mission .stage__inner {
+    padding-left: calc(var(--gutter) + 5.5rem);
+  }
 }
 
 @media (max-width: 1100px) {

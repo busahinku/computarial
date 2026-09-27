@@ -63,7 +63,8 @@ body {
 h1,
 h2,
 p,
-ul {
+ul,
+ol {
   margin: 0;
 }
 
@@ -91,6 +92,18 @@ input {
 :focus-visible {
   outline: 0.125rem solid var(--ink);
   outline-offset: 0.1875rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .icon {
@@ -955,6 +968,20 @@ main {
   color: var(--ink-soft);
 }
 
+.card__head > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card__live {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 0.25rem rgb(176 138 79 / 0.12);
+}
+
 .card__tag {
   padding: 0.25rem 0.625rem;
   border-radius: 999px;
@@ -1065,6 +1092,71 @@ main {
   background: var(--gold);
 }
 
+.card__insights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.card__insights p {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  border: 1px solid rgb(20 22 27 / 0.06);
+  border-radius: 0.875rem;
+  background: rgb(255 255 255 / 0.32);
+}
+
+.card__insights span {
+  font-size: 0.6875rem;
+  color: var(--ink-mute);
+}
+
+.card__insights strong {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 420;
+  line-height: 1;
+}
+
+/* Product principles */
+.principles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: min(100%, 48rem);
+  padding: 0;
+  border-block: 1px solid var(--line);
+  list-style: none;
+}
+
+.principles li {
+  position: relative;
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 1.25rem 1.0625rem;
+  text-align: left;
+}
+
+.principles li + li::before {
+  content: '';
+  position: absolute;
+  inset: 0.875rem auto 0.875rem 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.principles strong {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 430;
+  line-height: 1.2;
+}
+
+.principles small {
+  font-size: 0.7188rem;
+  color: var(--ink-mute);
+}
+
 /* Waitlist */
 .waitlist {
   display: grid;
@@ -1072,6 +1164,47 @@ main {
   gap: 0.625rem;
   width: min(100%, 34rem);
   margin-top: 0.5rem;
+}
+
+.waitlist__choice {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.82);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.4);
+  box-shadow: inset 0 1px 0 #fff, 0 0.5rem 1.5rem -1rem rgb(52 68 98 / 0.4);
+}
+
+.waitlist__choice label {
+  cursor: pointer;
+}
+
+.waitlist__choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.waitlist__choice span {
+  display: block;
+  padding: 0.4375rem 0.875rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--ink-mute);
+  transition: color 0.35s var(--ease), background-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+
+.waitlist__choice input:checked + span {
+  background: var(--ink);
+  color: var(--pearl);
+  box-shadow: 0 0.5rem 1.25rem -0.75rem rgb(20 22 27 / 0.55);
+}
+
+.waitlist__choice input:focus-visible + span {
+  outline: 0.125rem solid var(--ink);
+  outline-offset: 0.125rem;
 }
 
 .waitlist__label {
@@ -1094,7 +1227,7 @@ main {
   box-shadow: var(--glass-shadow), 0 0 0 0.125rem var(--ink);
 }
 
-.waitlist input {
+.waitlist input[type='email'] {
   flex: 1;
   min-width: 0;
   height: 3.375rem;
@@ -1106,7 +1239,7 @@ main {
   outline: none;
 }
 
-.waitlist input::placeholder {
+.waitlist input[type='email']::placeholder {
   color: var(--ink-mute);
 }
 
@@ -1114,6 +1247,12 @@ main {
   min-height: 1.5em;
   font-size: 0.875rem;
   color: var(--ink-soft);
+}
+
+.waitlist__note {
+  margin-top: -0.25rem;
+  font-size: 0.6875rem;
+  color: var(--ink-mute);
 }
 
 .waitlist[data-state='error'] .waitlist__status {
@@ -1329,6 +1468,10 @@ main {
   .stage--flow .card {
     display: none;
   }
+
+  .principles {
+    width: min(100%, 42rem);
+  }
 }
 
 @media (max-width: 820px) {
@@ -1348,7 +1491,8 @@ main {
 
   .nav__links,
   .chapters,
-  .nav .sound__label {
+  .nav .sound__label,
+  .principles {
     display: none;
   }
 

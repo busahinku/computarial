@@ -20,7 +20,7 @@ Node 20+ is required. `npm run assets` and `npm run audio` rebuild the generated
 
 | Variable | Purpose |
 | --- | --- |
-| `VITE_WAITLIST_ENDPOINT` | URL that accepts `POST {"email": "..."}` as JSON (Formspree, Basin, a Lambda). Without it the form shows "Signups open soon". |
+| `VITE_WAITLIST_ENDPOINT` | URL that accepts `POST {"email": "...", "interest": "phone" | "flowtrack"}` as JSON (Formspree, Basin, a Lambda). Without it the form shows "Signups open soon". |
 | `VITE_FLOWTRACK_URL` | Download link for the "Download Flowtrack" button. Without it the button scrolls to the waitlist. |
 
 Copy `.env.example` to `.env.production` and fill it in before `npm run build` or `npm run deploy`.
@@ -172,7 +172,7 @@ Hashed assets never need invalidation. Invalidate `/*` only if you changed files
 
 ### Social preview and canonical URL
 
-`index.html` points `canonical`, `og:url` and `og:image` at `https://busahin.com/computarial/`. GitHub Pages serves the project there because the account site uses the busahin.com custom domain; `busahinku.github.io/computarial/` redirects to it.
+`index.html` points `canonical`, `og:url` and `og:image` at `https://computarial.com/`. The apex domain is the canonical address; `www.computarial.com` redirects to it through GitHub Pages.
 
 ## Deploy to GitHub Pages (free)
 
@@ -180,7 +180,7 @@ Hashed assets never need invalidation. Invalidate `/*` only if you changed files
 npm run deploy
 ```
 
-This builds and force-pushes `/dist` to the `gh-pages` branch of `origin` (`scripts/deploy.mjs`, plain git, no Actions needed). In the repository settings, Pages serves the `gh-pages` branch from `/`. `base: './'` keeps the build path-independent, so it works under `https://<user>.github.io/<repo>/`.
+This builds and force-pushes `/dist` to the `gh-pages` branch of `origin` (`scripts/deploy.mjs`, plain git, no Actions needed). In the repository settings, Pages serves the `gh-pages` branch from `/`. `public/CNAME` keeps the custom domain attached on every deployment, while `base: './'` keeps the build path-independent.
 
 Pages is free for public repositories. To deploy from GitHub Actions instead, the CLI token needs the workflow scope: `gh auth refresh -s workflow`.
 

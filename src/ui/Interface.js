@@ -37,7 +37,14 @@ export class Interface {
     if (this.ready) return
     this.ready = true
     const url = import.meta.env.VITE_FLOWTRACK_URL
-    if (url) $$('[data-download]').forEach((a) => (a.href = url))
+    $$('[data-download]').forEach((a) => {
+      if (url) {
+        a.href = url
+        a.removeAttribute('data-interest')
+        a.removeAttribute('data-focus')
+        $('.btn__label', a).textContent = 'Download Flowtrack'
+      }
+    })
 
     // Absolute: a relative url() inside a custom property resolves against the stylesheet, not the page
     const mark = new URL(`${import.meta.env.BASE_URL}brand/computarial-black.svg`, location.href)
@@ -149,6 +156,7 @@ export class Interface {
       const target = a && a.hash.length > 1 && document.querySelector(a.hash)
       if (!target) return
       e.preventDefault()
+      if (a.dataset.interest) this.#chooseInterest(a.dataset.interest)
       this.scroll.scrollTo(target)
       const focus = a.dataset.focus && document.querySelector(a.dataset.focus)
       if (focus) setTimeout(() => focus.focus({ preventScroll: true }), env.reducedMotion ? 0 : 2300)
@@ -197,9 +205,10 @@ export class Interface {
 
   #form() {
     const form = $('[data-waitlist]')
-    const input = $('input', form)
+    const input = $('input[type="email"]', form)
     const button = $('button', form)
     const status = $('[data-status]', form)
+    $$('input[name="interest"]', form).forEach((radio) => radio.addEventListener('change', () => this.#chooseInterest(radio.value)))
     const set = (state, message) => {
       form.dataset.state = state
       status.textContent = message
@@ -224,15 +233,24 @@ export class Interface {
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ email: input.value.trim() }),
+          body: JSON.stringify({ email: input.value.trim(), interest: form.elements.interest.value }),
         })
         if (!res.ok) throw new Error(res.statusText)
+        const product = form.elements.interest.value === 'flowtrack' ? 'Flowtrack' : 'the first phone'
         form.reset()
-        set('success', 'You are on the list. We will write when there is news.')
+        this.#chooseInterest('phone')
+        set('success', `You are on the ${product} list. We will write when there is news.`)
         bus.emit('ui:success')
       } catch {
         set('error', 'Something went wrong. Please try again.')
       }
     })
+  }
+
+  #chooseInterest(value) {
+    const radio = $(`input[name="interest"][value="${value}"]`)
+    if (!radio) return
+    radio.checked = true
+    $('[data-interest-label]').textContent = value === 'flowtrack' ? 'Flowtrack' : 'first phone'
   }
 }

@@ -7,13 +7,13 @@
     <meta name="description" content="Computarial builds intentional technology: Flowtrack for deep work on the desktop, and a foldable e-ink first phone for kids." />
     <meta name="theme-color" content="#edf2f8" />
     <meta name="color-scheme" content="light" />
-    <link rel="canonical" href="https://busahin.com/computarial/" />
+    <link rel="canonical" href="https://computarial.com/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Computarial" />
-    <meta property="og:url" content="https://busahin.com/computarial/" />
+    <meta property="og:url" content="https://computarial.com/" />
     <meta property="og:title" content="Computarial | Technology that protects your attention" />
     <meta property="og:description" content="Calm tools for deep work and a first phone for kids. Nothing designed to keep you hooked." />
-    <meta property="og:image" content="https://busahin.com/computarial/images/og.webp" />
+    <meta property="og:image" content="https://computarial.com/images/og.webp" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="A fan of white feathers on a marble pedestal inside a sunlit rotunda" />
@@ -25,8 +25,8 @@
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "Computarial",
-        "url": "https://busahin.com/computarial/",
-        "logo": "https://busahin.com/computarial/apple-touch-icon.png",
+        "url": "https://computarial.com/",
+        "logo": "https://computarial.com/apple-touch-icon.png",
         "description": "Intentional technology: Flowtrack for deep work on the desktop, and a foldable e-ink first phone for kids."
       }
     </script>
@@ -111,14 +111,14 @@
               <h1 id="hero-title" class="display" data-split>Technology that <em>protects</em> your attention.</h1>
               <p class="lede" data-fade>Computarial builds calm tools for deep work and a first phone for kids. Nothing designed to keep you hooked.</p>
               <div class="actions" data-fade>
-                <a class="btn btn--primary" href="#flowtrack" data-magnetic>
+                <a class="btn btn--primary" href="#flowtrack" data-interest="flowtrack" data-magnetic>
                   <span class="btn__shine" aria-hidden="true"></span>
                   <span class="btn__label">Meet Flowtrack</span>
                   <span class="btn__icon" aria-hidden="true"><svg><use href="#i-arrow" /></svg><svg><use href="#i-arrow" /></svg></span>
                 </a>
-                <a class="link" href="#mission">
+                <a class="link" href="#device">
                   <span class="link__icon" aria-hidden="true"><svg><use href="#i-plus" /></svg></span>
-                  <span class="link__label">Our Mission</span>
+                  <span class="link__label">See the first phone</span>
                 </a>
               </div>
             </div>
@@ -140,16 +140,16 @@
               <h2 id="flow-title" class="display display--md" data-split><em translate="no">Flowtrack</em> shows where your hours really go.</h2>
               <p class="lede" data-fade>A desktop app that maps your computer time into focus and drift, so deep work becomes a habit.</p>
               <div class="actions" data-fade>
-                <a class="btn btn--primary" href="#mission" data-download data-magnetic>
+                <a class="btn btn--primary" href="#mission" data-download data-interest="flowtrack" data-focus="#email" data-magnetic>
                   <span class="btn__shine" aria-hidden="true"></span>
-                  <span class="btn__label">Download Flowtrack</span>
+                  <span class="btn__label">Join the Flowtrack waitlist</span>
                   <span class="btn__icon" aria-hidden="true"><svg><use href="#i-arrow" /></svg><svg><use href="#i-arrow" /></svg></span>
                 </a>
               </div>
             </div>
 
             <aside class="card" data-card data-fade aria-label="Flowtrack, an example day">
-              <p class="card__head"><span>Example day</span><span class="card__tag">Flowtrack</span></p>
+              <p class="card__head"><span><i class="card__live" aria-hidden="true"></i>Example day</span><span class="card__tag">Flowtrack</span></p>
               <div class="card__main">
                 <svg class="dial" viewBox="0 0 120 120" aria-hidden="true">
                   <circle class="dial__track" cx="60" cy="60" r="50" />
@@ -168,6 +168,10 @@
               </div>
               <p class="card__axis" aria-hidden="true"><span>9 am</span><span>8 pm</span></p>
               <p class="card__legend"><span><i class="swatch swatch--focus"></i>Focus</span><span><i class="swatch"></i>Drift</span></p>
+              <div class="card__insights">
+                <p><span>Focus blocks</span><strong>3</strong></p>
+                <p><span>Longest stretch</span><strong>1h 46m</strong></p>
+              </div>
             </aside>
           </div>
         </section>
@@ -192,8 +196,18 @@
             <div class="finale">
               <h2 id="mission-title" class="display display--lg" data-split>Raise a generation that <em>owns</em> its attention.</h2>
               <p class="lede" data-fade>Every product we make answers one question: does it leave people more focused than it found them?</p>
+              <ol class="principles" data-fade aria-label="Our product principles">
+                <li><strong>Finite by default</strong><small>Interfaces with an ending.</small></li>
+                <li><strong>Purpose before engagement</strong><small>Success means you can leave.</small></li>
+                <li><strong>Childhood stays human</strong><small>Connection without the feed.</small></li>
+              </ol>
               <form class="waitlist" data-waitlist novalidate data-fade>
-                <label class="waitlist__label" for="email">Join the waitlist for the first phone</label>
+                <fieldset class="waitlist__choice">
+                  <legend class="sr-only">Choose a product</legend>
+                  <label><input type="radio" name="interest" value="phone" checked /><span>First phone</span></label>
+                  <label><input type="radio" name="interest" value="flowtrack" /><span>Flowtrack</span></label>
+                </fieldset>
+                <label class="waitlist__label" for="email">Join the <span data-interest-label>first phone</span> waitlist</label>
                 <div class="waitlist__row">
                   <input id="email" name="email" type="email" autocomplete="email" inputmode="email" spellcheck="false" placeholder="you@example.com" required aria-describedby="waitlist-status" />
                   <button class="btn btn--primary" type="submit" data-magnetic>
@@ -203,6 +217,7 @@
                   </button>
                 </div>
                 <p class="waitlist__status" id="waitlist-status" data-status role="status" aria-live="polite"></p>
+                <p class="waitlist__note">Occasional product updates. No noise, ever.</p>
               </form>
             </div>
           </div>
